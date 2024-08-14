@@ -216,7 +216,19 @@ function output(): void
             $prom .= "# $fkey in the last $fname: $count\n";
         }
     }
-    foreach ($data as $entry) {
+
+    $filteredData=[];
+
+    foreach($data as $entry){
+        $sort=$entry['labels']??[];
+        ksort($sort);
+        $sort[]=$entry['name'];
+        $hash=md5(json_encode($sort));
+        $filteredData[$hash]=$entry;
+    }
+
+
+    foreach ($filteredData as $entry) {
         $labels = [];
         if (isset($entry["labels"])) {
             foreach ($entry["labels"] as $labelName => $labelValue) {
@@ -238,8 +250,6 @@ function output(): void
             $labels .
             " " .
             $entry["value"] .
-            " " .
-            $entry["timestamp"] .
             "\n";
     }
     file_put_contents("/www/metrics/new.prom", $prom);
