@@ -238,8 +238,8 @@ function output(): void
             $labels .
             " " .
             $entry["value"] .
-            " " .
-            $entry["timestamp"] .
+            #" " .
+            #$entry["timestamp"] .
             "\n";
     }
     file_put_contents("/www/metrics/new.prom", $prom);
