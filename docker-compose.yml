@@ -1,0 +1,19 @@
+version: "3"
+services:
+  worker:
+    build: mqtt2prom
+    restart: always
+    environment:
+      MQTT_HOST: 10.0.10.2
+      MQTT_PORT: 1883
+    #      MQTT_USER: mqtt
+    #      MQTT_PASS: pass
+    volumes:
+      - ./data/metrics:/www/metrics
+  webserv:
+    build: webserv
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./data/metrics:/www/metrics

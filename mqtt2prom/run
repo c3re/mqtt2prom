@@ -1,0 +1,295 @@
+#!/usr/bin/env php
+<?php
+use Mosquitto\Message;
+
+define("STARTED", microtime(true));
+$mqttHost = getenv("MQTT_HOST");
+if (!$mqttHost) {
+    echo "Please set MQTT_HOST environment variable\n";
+    exit(1);
+}
+
+
+
+
+pcntl_signal(SIGINT,  "endit");
+pcntl_signal(SIGTERM, "endit");
+pcntl_signal(SIGHUP,  "endit");
+
+
+$mqttPort = getEnvWithDefaultInt("MQTT_PORT", 1883);
+
+$mqttUser = getEnvWithDefaultStr("MQTT_USER", "");
+$mqttPass = getEnvWithDefaultStr("MQTT_PASS", "");
+$mqttClientId = getEnvWithDefaultStr("MQTT_CLIENT_ID", "mqtt2prometheus");
+$mqttTopic = getEnvWithDefaultStr("MQTT_TOPIC", "prometheus");
+$qos = getEnvWithDefaultInt("MQTT_QOS", 2);
+
+$serviceReloadTime = getEnvWithDefaultStr("SERVICE_RELOAD_TIME", "03:30");
+
+$mqtt = new Mosquitto\Client($mqttClientId);
+
+$data = [];
+$mqtt->setCredentials($mqttUser, $mqttPass);
+
+$usedConfig = [
+    "MQTT_HOST" => $mqttHost,
+    "MQTT_PORT" => $mqttPort,
+    "MQTT_USER" => $mqttUser,
+    "MQTT_PASS" => $mqttPass,
+    "MQTT_CLIENT_ID" => $mqttClientId,
+    "MQTT_TOPIC" => $mqttTopic,
+    "MQTT_QOS" => $qos,
+    "SERVICE_RELOAD_TIME" => $serviceReloadTime,
+];
+
+$padLength = max(array_map("strlen", array_keys($usedConfig)));
+
+echo "Using the following config:\n";
+foreach ($usedConfig as $key => $value) {
+    echo str_pad($key, $padLength) . ": $value\n";
+}
+
+echo "Connecting to $mqttHost:$mqttPort";
+$mqtt->connect($mqttHost, $mqttPort);
+echo "Connected\n";
+
+$data = [];
+$stats = [
+    "messages" => [],
+    "errors" => [],
+    "metrics" => [],
+];
+$news = true;
+$mqtt->onMessage(function ($message) use (&$data, &$stats, &$news) {
+    $stats["messages"][] = time();
+    if (!precheck($message)) {
+        $stats["errors"][] = time();
+        return;
+    }
+    $stats["metrics"][] = time();
+    $payload = (array) json_decode($message->payload, true);
+
+    $payload["timestamp"] = microtime(true);
+    $data[] = $payload;
+    $news = true;
+});
+
+echo "Subscribing to $mqttTopic with QoS $qos ";
+$mqtt->subscribe($mqttTopic, $qos);
+echo "Subscribed\n";
+
+$timer = 0;
+echo "Started listening for incoming messages\n will wait 60 seconds before starting to export data\n";
+$realStart = time() + 60;
+echo "waiting till " .
+    date("Y-m-d H:i:s", $realStart) .
+    " that's in " .
+    ($realStart - time()) .
+    " seconds\n";
+while (time() < $realStart) {
+    $wait = time() + 5;
+    $mqtt->loop(5000);
+    sleep($wait - time());
+    echo "Still waiting...\n";
+}
+echo "\n Starting to export data\n";
+
+while (date("H:i") != $serviceReloadTime) {
+    $mqtt->loop(1000);
+    if ($news || time() - $timer > 15) {
+        output();
+        $news = false;
+        $timer = time();
+    }
+}
+
+function error(string $msg): void
+{
+    global $mqtt, $mqttTopic;
+    $mqtt->publish($mqttTopic . "/error", $msg, 2);
+    fwrite(STDERR, "ERROR: " . $msg . "\n");
+}
+function precheck(Message $message): bool
+{
+    $payloadRaw = $message->payload;
+    $payload = json_decode($payloadRaw, true);
+    if (json_last_error() != JSON_ERROR_NONE) {
+        error(
+            "Invalid json: $message->payload (" . json_last_error_msg() . ")"
+        );
+        return false;
+    }
+    if (!is_array($payload)) {
+        error("Payload is not an object: $payloadRaw");
+        return false;
+    }
+
+    if (!isset($payload["name"]) || !isset($payload["value"])) {
+        error(
+            "Invalid payload, at least name and value is needed: $payloadRaw"
+        );
+        return false;
+    }
+    if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $payload["name"])) {
+        error("Invalid name: " . $payload["name"]);
+        return false;
+    }
+    if (!is_numeric($payload["value"])) {
+        error("Value is not a number: $payloadRaw");
+        return false;
+    }
+    $payload["labels"] = $payload["labels"] ?? [];
+    if (!is_array($payload["labels"])) {
+        error("Labels must be an object: $payloadRaw");
+        return false;
+    }
+    foreach ($payload["labels"] as $labelName => $labelValue) {
+        if (!is_string($labelName) || !is_scalar($labelValue)) {
+            error("Label names and values must be strings: $payloadRaw");
+            return false;
+        }
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $labelName)) {
+            error("Invalid label name: $labelName");
+            return false;
+        }
+    }
+    foreach (array_keys($payload) as $key) {
+        if (!in_array($key, ["name", "value", "labels"])) {
+            error("Unknown key: $key");
+            return false;
+        }
+    }
+    return true;
+}
+
+function output(): void
+{
+    filter();
+    global $data, $stats;
+    $t = microtime(true);
+
+    $prom = "";
+    $prom .=
+        "# service started at             : " .
+        STARTED .
+        " / " .
+        date("Y-m-d H:i:s", intval(STARTED)) .
+        "\n";
+    $prom .=
+        "# exported at                    : $t / " .
+        date("Y-m-d H:i:s", intval($t)) .
+        "\n";
+    $prom .= "# \n";
+    $prom .=
+        "# mem usage                      : " .
+        round(memory_get_usage() / 1024 / 1024, 1) .
+        " / " .
+        round(memory_get_usage(true) / 1024 / 1024, 1) .
+        " MB\n";
+    $prom .=
+        "# mem usage peak                 : " .
+        round(memory_get_peak_usage() / 1024 / 1024, 1) .
+        " / " .
+        round(memory_get_peak_usage(true) / 1024 / 1024, 1) .
+        " MB\n";
+    $timeframe = [
+        60 => "Minute",
+        300 => "5 Minutes",
+        900 => "15 Minutes",
+        1800 => "30 Minutes",
+        3600 => "Hour",
+        21600 => "6 Hours",
+        43200 => "12 Hours",
+        86400 => "Day",
+    ];
+    foreach ($stats as $key => $values) {
+        $prom .= "# \n";
+        foreach ($timeframe as $time => $name) {
+            $count = count(
+                array_filter($values, function ($v) use ($time) {
+                    return $v > time() - $time;
+                })
+            );
+            $fkey = str_pad($key, 8);
+            $fname = str_pad($name, 10);
+            $prom .= "# $fkey in the last $fname: $count\n";
+        }
+    }
+    foreach ($data as $entry) {
+        $labels = [];
+        if (isset($entry["labels"])) {
+            foreach ($entry["labels"] as $labelName => $labelValue) {
+                $labels[] =
+                    "$labelName=" .
+                    json_encode(
+                        strval($labelValue),
+                        JSON_UNESCAPED_UNICODE + JSON_UNESCAPED_SLASHES
+                    );
+            }
+        }
+        $labels = implode(", ", $labels);
+        if ($labels != "") {
+            $labels = "{" . $labels . "}";
+        }
+
+        $prom .=
+            $entry["name"] .
+            $labels .
+            " " .
+            $entry["value"] .
+            " " .
+            $entry["timestamp"] .
+            "\n";
+    }
+    file_put_contents("/www/metrics/new.prom", $prom);
+    rename("/www/metrics/new.prom", "/www/metrics/index.prom");
+    // return $prom;
+}
+
+function filter(): void
+{
+    global $data, $stats;
+    $data = array_filter($data, function ($entry) {
+        return $entry["timestamp"] > time() - 5 * 60; // 5 min is the hardcoded value in prometheus
+    });
+    // remove stats older than 24h
+    foreach ($stats as $key => $values) {
+        $stats[$key] = array_filter($values, function ($v) {
+            return $v > time() - 24 * 60 * 60;
+        });
+    }
+}
+
+function getEnvWithDefaultStr(string $key, string $default): string
+{
+    return strval(getEnvWithDefault($key, $default));
+}
+
+function getEnvWithDefaultInt(string $key, int $default): int
+{
+    return intval(getEnvWithDefault($key, $default));
+}
+function getEnvWithDefault(string $key, bool|string|int $default): bool|string|int
+{
+    $value = getenv($key);
+    if(!is_scalar($value)){
+        return $default;
+    }
+    if ($value === false) {
+        return $default;
+    }
+    if(is_numeric($default)){
+        return intval($value);
+    }
+    return strval($value);
+}
+
+function endit(): void
+{
+    global $mqtt;
+    error("Exiting");
+    $mqtt->loop(100);
+    $mqtt->disconnect();
+    exit(0);
+}
