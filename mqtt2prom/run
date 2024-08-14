@@ -2,7 +2,7 @@
 <?php
 use Mosquitto\Message;
 
-define("STARTED", microtime(true));
+define("STARTED", time());
 $mqttHost = getenv("MQTT_HOST");
 if (!$mqttHost) {
     echo "Please set MQTT_HOST environment variable\n";
@@ -70,7 +70,7 @@ $mqtt->onMessage(function ($message) use (&$data, &$stats, &$news) {
     $stats["metrics"][] = time();
     $payload = (array) json_decode($message->payload, true);
 
-    $payload["timestamp"] = microtime(true);
+    $payload["timestamp"] = time();
     $data[] = $payload;
     $news = true;
 });
@@ -167,7 +167,7 @@ function output(): void
 {
     filter();
     global $data, $stats;
-    $t = microtime(true);
+    $t = time();
 
     $prom = "";
     $prom .=
