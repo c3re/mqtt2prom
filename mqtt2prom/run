@@ -238,8 +238,8 @@ function output(): void
             $labels .
             " " .
             $entry["value"] .
-            #" " .
-            #$entry["timestamp"] .
+            " " .
+            $entry["timestamp"] .
             "\n";
     }
     file_put_contents("/www/metrics/new.prom", $prom);
@@ -251,7 +251,7 @@ function filter(): void
 {
     global $data, $stats;
     $data = array_filter($data, function ($entry) {
-        return $entry["timestamp"] > time() - 5 * 60; // 5 min is the hardcoded value in prometheus
+        return $entry["timestamp"] > time() -  60;
     });
     // remove stats older than 24h
     foreach ($stats as $key => $values) {
