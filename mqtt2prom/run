@@ -81,7 +81,7 @@ echo "Subscribed\n";
 
 $timer = 0;
 echo "Started listening for incoming messages\n will wait 60 seconds before starting to export data\n";
-$realStart = time() + 60;
+$realStart = time() + 15;
 echo "waiting till " .
     date("Y-m-d H:i:s", $realStart) .
     " that's in " .
