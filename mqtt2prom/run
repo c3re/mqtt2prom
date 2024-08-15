@@ -61,7 +61,9 @@ $stats = [
     "metrics" => [],
 ];
 $news = true;
-$mqtt->onMessage(function ($message) use (&$data, &$stats, &$news) {
+$globalCounter=0;
+$mqtt->onMessage(function ($message) use (&$data, &$stats, &$news,&$globalCounter) {
+    $globalCounter++;
     $stats["messages"][] = time();
     if (!precheck($message)) {
         $stats["errors"][] = time();
@@ -80,6 +82,7 @@ $mqtt->subscribe($mqttTopic, $qos);
 echo "Subscribed\n";
 
 $timer = 0;
+
 echo "Started listening for incoming messages\n will wait 60 seconds before starting to export data\n";
 $realStart = time() + 15;
 echo "waiting till " .
@@ -166,7 +169,7 @@ function precheck(Message $message): bool
 function output(): void
 {
     filter();
-    global $data, $stats;
+    global $data, $stats,$globalCounter;
     $t = time();
 
     $prom = "";
@@ -216,7 +219,8 @@ function output(): void
             $prom .= "# $fkey in the last $fname: $count\n";
         }
     }
-
+    $prom .= "# \n";
+    $prom .= "# global counter: $globalCounter\n";
     $filteredData=[];
 
     foreach($data as $entry){
