@@ -24,6 +24,8 @@ $mqttPass = getEnvWithDefaultStr("MQTT_PASS", "");
 $mqttClientId = getEnvWithDefaultStr("MQTT_CLIENT_ID", "mqtt2prometheus");
 $mqttTopic = getEnvWithDefaultStr("MQTT_TOPIC", "prometheus");
 $qos = getEnvWithDefaultInt("MQTT_QOS", 2);
+$ignoreRetained = getEnvWithDefaultInt("IGNORE_RETAINED", 1)?1:0;
+
 
 $serviceReloadTime = getEnvWithDefaultStr("SERVICE_RELOAD_TIME", "03:30");
 
@@ -41,6 +43,7 @@ $usedConfig = [
     "MQTT_TOPIC" => $mqttTopic,
     "MQTT_QOS" => $qos,
     "SERVICE_RELOAD_TIME" => $serviceReloadTime,
+    "IGNORE_RETAINED" => $ignoreRetained,
 ];
 
 $padLength = max(array_map("strlen", array_keys($usedConfig)));
@@ -115,6 +118,11 @@ function error(string $msg): void
 }
 function precheck(Message $message): bool
 {
+    global $ignoreRetained;
+    if($ignoreRetained && $message->retain){
+        error("Ignoring retained message");
+        return false;
+    }
     $payloadRaw = $message->payload;
     $payload = json_decode($payloadRaw, true);
     if (json_last_error() != JSON_ERROR_NONE) {

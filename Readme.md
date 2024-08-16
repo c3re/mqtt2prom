@@ -12,8 +12,12 @@ MQTT_PASS
 MQTT_CLIENT_ID|mqtt2prometheus
 MQTT_TOPIC|prometheus
 MQTT_QOS|2
-
+IGNORE_RETAINED|1
 ```
+
+
+
+`IGNORE_RETAINED`: when set, retained messages are dropped and will be reported as errors.
 
 it will listen on the configured mqtt server at `$MQTT_TOPIC` for metrics in json_format.
 
