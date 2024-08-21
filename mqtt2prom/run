@@ -9,13 +9,9 @@ if (!$mqttHost) {
     exit(1);
 }
 
-
-
-
-pcntl_signal(SIGINT,  "endit");
+pcntl_signal(SIGINT, "endit");
 pcntl_signal(SIGTERM, "endit");
-pcntl_signal(SIGHUP,  "endit");
-
+pcntl_signal(SIGHUP, "endit");
 
 $mqttPort = getEnvWithDefaultInt("MQTT_PORT", 1883);
 
@@ -24,10 +20,7 @@ $mqttPass = getEnvWithDefaultStr("MQTT_PASS", "");
 $mqttClientId = getEnvWithDefaultStr("MQTT_CLIENT_ID", "mqtt2prometheus");
 $mqttTopic = getEnvWithDefaultStr("MQTT_TOPIC", "prometheus");
 $qos = getEnvWithDefaultInt("MQTT_QOS", 2);
-$ignoreRetained = getEnvWithDefaultInt("IGNORE_RETAINED", 1)?1:0;
-
-
-$serviceReloadTime = getEnvWithDefaultStr("SERVICE_RELOAD_TIME", "03:30");
+$ignoreRetained = getEnvWithDefaultInt("IGNORE_RETAINED", 1) ? 1 : 0;
 
 $mqtt = new Mosquitto\Client($mqttClientId);
 
@@ -42,7 +35,6 @@ $usedConfig = [
     "MQTT_CLIENT_ID" => $mqttClientId,
     "MQTT_TOPIC" => $mqttTopic,
     "MQTT_QOS" => $qos,
-    "SERVICE_RELOAD_TIME" => $serviceReloadTime,
     "IGNORE_RETAINED" => $ignoreRetained,
 ];
 
@@ -64,8 +56,20 @@ $stats = [
     "metrics" => [],
 ];
 $news = true;
-$globalCounter=0;
-$mqtt->onMessage(function ($message) use (&$data, &$stats, &$news,&$globalCounter) {
+$isRunning = true;
+$globalCounter = 0;
+$mqtt->onMessage(function ($message) use (
+    &$data,
+    &$stats,
+    &$news,
+    &$globalCounter,
+    &$isRunning,
+    $mqttTopic
+) {
+    if ($mqttTopic . "/restart" === $message->topic) {
+        $isRunning = false;
+        return;
+    }
     $globalCounter++;
     $stats["messages"][] = time();
     if (!precheck($message)) {
@@ -82,6 +86,7 @@ $mqtt->onMessage(function ($message) use (&$data, &$stats, &$news,&$globalCounte
 
 echo "Subscribing to $mqttTopic with QoS $qos ";
 $mqtt->subscribe($mqttTopic, $qos);
+$mqtt->subscribe($mqttTopic . "/restart", $qos);
 echo "Subscribed\n";
 
 $timer = 0;
@@ -101,7 +106,7 @@ while (time() < $realStart) {
 }
 echo "\n Starting to export data\n";
 
-while (date("H:i") != $serviceReloadTime) {
+while ($isRunning) {
     $mqtt->loop(1000);
     if ($news || time() - $timer > 15) {
         output();
@@ -109,6 +114,9 @@ while (date("H:i") != $serviceReloadTime) {
         $timer = time();
     }
 }
+$mqtt->disconnect();
+$mqtt->loop();
+exit();
 
 function error(string $msg): void
 {
@@ -119,7 +127,7 @@ function error(string $msg): void
 function precheck(Message $message): bool
 {
     global $ignoreRetained;
-    if($ignoreRetained && $message->retain){
+    if ($ignoreRetained && $message->retain) {
         error("Ignoring retained message");
         return false;
     }
@@ -177,7 +185,7 @@ function precheck(Message $message): bool
 function output(): void
 {
     filter();
-    global $data, $stats,$globalCounter;
+    global $data, $stats, $globalCounter;
     $t = time();
 
     $prom = "";
@@ -229,16 +237,16 @@ function output(): void
     }
     $prom .= "# \n";
     $prom .= "# global counter: $globalCounter\n";
-    $filteredData=[];
+    $filteredData = [];
 
-    foreach($data as $entry){
-        $sort=$entry['labels']??[];
+    foreach ($data as $entry) {
+        $sort = $entry["labels"] ?? [];
         ksort($sort);
-        $sort[]=$entry['name'];
-        $hash=md5(json_encode($sort));
-        $filteredData[$hash]=$entry;
-    }
+        $sort[] = $entry["name"];
+        $hash = md5(strval(json_encode($sort)));
 
+        $filteredData[$hash] = $entry;
+    }
 
     foreach ($filteredData as $entry) {
         $labels = [];
@@ -257,12 +265,7 @@ function output(): void
             $labels = "{" . $labels . "}";
         }
 
-        $prom .=
-            $entry["name"] .
-            $labels .
-            " " .
-            $entry["value"] .
-            "\n";
+        $prom .= $entry["name"] . $labels . " " . $entry["value"] . "\n";
     }
     file_put_contents("/www/metrics/new.prom", $prom);
     rename("/www/metrics/new.prom", "/www/metrics/index.prom");
@@ -273,7 +276,7 @@ function filter(): void
 {
     global $data, $stats;
     $data = array_filter($data, function ($entry) {
-        return $entry["timestamp"] > time() -  60;
+        return $entry["timestamp"] > time() - 60;
     });
     // remove stats older than 24h
     foreach ($stats as $key => $values) {
@@ -292,16 +295,18 @@ function getEnvWithDefaultInt(string $key, int $default): int
 {
     return intval(getEnvWithDefault($key, $default));
 }
-function getEnvWithDefault(string $key, bool|string|int $default): bool|string|int
-{
+function getEnvWithDefault(
+    string $key,
+    bool|string|int $default
+): bool|string|int {
     $value = getenv($key);
-    if(!is_scalar($value)){
+    if (!is_scalar($value)) {
         return $default;
     }
     if ($value === false) {
         return $default;
     }
-    if(is_numeric($default)){
+    if (is_numeric($default)) {
         return intval($value);
     }
     return strval($value);
@@ -310,8 +315,8 @@ function getEnvWithDefault(string $key, bool|string|int $default): bool|string|i
 function endit(): void
 {
     global $mqtt;
+    global $isRunning;
+    $isRunning = false;
     error("Exiting");
-    $mqtt->loop(100);
-    $mqtt->disconnect();
-    exit(0);
 }
+
