@@ -14,16 +14,13 @@ pcntl_signal(SIGTERM, "endit");
 pcntl_signal(SIGHUP, "endit");
 
 $mqttPort = getEnvWithDefaultInt("MQTT_PORT", 1883);
+
 $mqttUser = getEnvWithDefaultStr("MQTT_USER", "");
 $mqttPass = getEnvWithDefaultStr("MQTT_PASS", "");
 $mqttClientId = getEnvWithDefaultStr("MQTT_CLIENT_ID", "mqtt2prometheus");
 $mqttTopic = getEnvWithDefaultStr("MQTT_TOPIC", "prometheus");
 $qos = getEnvWithDefaultInt("MQTT_QOS", 2);
 $ignoreRetained = getEnvWithDefaultInt("IGNORE_RETAINED", 1) ? 1 : 0;
-$gitId="Unknown";
-if (is_file("/var/lib/git_id")) {
-    $gitId = trim(file_get_contents("/var/lib/git_id"));
-}
 
 $mqtt = new Mosquitto\Client($mqttClientId);
 
@@ -188,11 +185,10 @@ function precheck(Message $message): bool
 function output(): void
 {
     filter();
-    global $data, $stats, $globalCounter,$gitId;
+    global $data, $stats, $globalCounter;
     $t = time();
 
     $prom = "";
-    $prom .= "# from git-id                   : $gitId\n";
     $prom .=
         "# service started at             : " .
         STARTED .
