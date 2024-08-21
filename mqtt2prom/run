@@ -237,6 +237,7 @@ function output(): void
     }
     $prom .= "# \n";
     $prom .= "# global counter                 : $globalCounter\n";
+
     $filteredData = [];
 
     foreach ($data as $entry) {
