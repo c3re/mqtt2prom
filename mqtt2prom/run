@@ -274,6 +274,21 @@ function output(): void
 
         $prom .= $entry["name"] . $labels . " " . $entry["value"] . "\n";
     }
+
+    $prom .=
+        "memory_usage_current{unit=\"bytes\"} " . memory_get_usage() . "\n";
+    $prom .=
+        "memory_usage_peak{unit=\"bytes\"} " . memory_get_peak_usage() . "\n";
+
+    $prom .=
+        "memory_usage_current_allocated{unit=\"bytes\"} " .
+        memory_get_usage(true) .
+        "\n";
+    $prom .=
+        "memory_usage_peak_allocated{unit=\"bytes\"} " .
+        memory_get_peak_usage(true) .
+        "\n";
+
     file_put_contents("/www/metrics/new.prom", $prom);
     file_put_contents(
         "/www/metrics/new.json",
