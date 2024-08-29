@@ -187,7 +187,7 @@ function output(): void
     filter();
     global $data, $stats, $globalCounter;
     $t = time();
-
+    $json = [];
     $prom = "";
     $prom .=
         "# service started at             : " .
@@ -261,6 +261,11 @@ function output(): void
                     );
             }
         }
+        $json[] = [
+            "name" => $entry["name"],
+            "labels" => $entry["labels"] ?? [],
+            "value" => $entry["value"],
+        ];
         $labels = implode(", ", $labels);
         if ($labels != "") {
             $labels = "{" . $labels . "}";
@@ -269,6 +274,7 @@ function output(): void
         $prom .= $entry["name"] . $labels . " " . $entry["value"] . "\n";
     }
     file_put_contents("/www/metrics/new.prom", $prom);
+    file_put_contents("/www/metrics/json", $json);
     rename("/www/metrics/new.prom", "/www/metrics/index.prom");
     // return $prom;
 }
