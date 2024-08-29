@@ -275,7 +275,13 @@ function output(): void
         $prom .= $entry["name"] . $labels . " " . $entry["value"] . "\n";
     }
     file_put_contents("/www/metrics/new.prom", $prom);
-    file_put_contents("/www/metrics/json", json_encode($json,JSON_PRETTY_PRINT+JSON_UNESCAPED_SLASHES+JSON_UNESCAPED_UNICODE));
+    file_put_contents(
+        "/www/metrics/json",
+        json_encode(
+            $json,
+            JSON_PRETTY_PRINT + JSON_UNESCAPED_SLASHES + JSON_UNESCAPED_UNICODE
+        )
+    );
     rename("/www/metrics/new.prom", "/www/metrics/index.prom");
     // return $prom;
 }
