@@ -236,7 +236,7 @@ function output(): void
         }
     }
     $prom .= "# \n";
-    $prom .= "# global counter                 : $globalCounter\n";
+    $prom .= "# global counter                 : $globalCounter\n\n";
 
     $filteredData = [];
 
@@ -275,6 +275,7 @@ function output(): void
         $prom .= $entry["name"] . $labels . " " . $entry["value"] . "\n";
     }
 
+    $prom .= "\n\n# internals\n";
     $prom .=
         "memory_usage_current{unit=\"bytes\"} " . memory_get_usage() . "\n";
     $prom .=
