@@ -252,6 +252,7 @@ function output(): void
     foreach ($filteredData as $entry) {
         $labels = [];
         if (isset($entry["labels"])) {
+            ksort($entry["labels"]);
             foreach ($entry["labels"] as $labelName => $labelValue) {
                 $labels[] =
                     "$labelName=" .
