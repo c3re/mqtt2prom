@@ -276,12 +276,13 @@ function output(): void
     }
     file_put_contents("/www/metrics/new.prom", $prom);
     file_put_contents(
-        "/www/metrics/json",
+        "/www/metrics/new.json",
         json_encode(
             $json,
             JSON_PRETTY_PRINT + JSON_UNESCAPED_SLASHES + JSON_UNESCAPED_UNICODE
         )
     );
+    rename("/www/metrics/new.json", "/www/metrics/metrics.json");
     rename("/www/metrics/new.prom", "/www/metrics/index.prom");
     // return $prom;
 }
