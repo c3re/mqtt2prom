@@ -242,6 +242,7 @@ function output(): void
         43200 => "12 Hours",
         86400 => "Day",
     ];
+    echo "# gc_collect_cycles ".gc_collect_cycles()."\n";
     foreach ($stats as $key => $values) {
         $prom .= "# \n";
         foreach ($timeframe as $time => $name) {
