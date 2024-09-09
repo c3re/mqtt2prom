@@ -188,8 +188,8 @@ function precheck(Message $message): bool
         error("valid_seconds must be at least 1");
         return false;
     }
-    if ($payload["valid_seconds"] > 60 * 60 * 48) {
-        error("valid_seconds must be at most 48 hours");
+    if ($payload["valid_seconds"] > 60 * 60 * 24 * 14) {
+        error("valid_seconds must be at most 14 days");
         return false;
     }
 
@@ -329,10 +329,10 @@ function filter(): void
     $data = array_filter($data, function ($entry) {
         return $entry["timestamp"] > time() - $entry["valid_seconds"];
     });
-    // remove stats older than 48h
+    // remove stats older than 14 days
     foreach ($stats as $key => $values) {
         $stats[$key] = array_filter($values, function ($v) {
-            return $v > time() - 48 * 60 * 60;
+            return $v > time() -   60 * 60 * 24 * 14;
         });
     }
 }
