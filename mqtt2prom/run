@@ -173,8 +173,25 @@ function precheck(Message $message): bool
             return false;
         }
     }
+
+    if (!isset($payload["valid_seconds"])) {
+        $payload["valid_seconds"] = 60;
+    }
+    if (!is_numeric($payload["valid_seconds"])) {
+        error("valid_seconds must be a number");
+        return false;
+    }
+    if ($payload["valid_seconds"] < 1) {
+        error("valid_seconds must be at least 1");
+        return false;
+    }
+    if ($payload["valid_seconds"] > 60 * 60 * 48) {
+        error("valid_seconds must be at most 48 hours");
+        return false;
+    }
+
     foreach (array_keys($payload) as $key) {
-        if (!in_array($key, ["name", "value", "labels"])) {
+        if (!in_array($key, ["name", "value", "labels", "valid_seconds"])) {
             error("Unknown key: $key");
             return false;
         }
@@ -307,7 +324,7 @@ function filter(): void
 {
     global $data, $stats;
     $data = array_filter($data, function ($entry) {
-        return $entry["timestamp"] > time() - 60;
+        return $entry["timestamp"] > time() - $entry["valid_seconds"];
     });
     // remove stats older than 24h
     foreach ($stats as $key => $values) {
