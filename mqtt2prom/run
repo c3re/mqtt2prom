@@ -80,6 +80,9 @@ $mqtt->onMessage(function ($message) use (
     $payload = (array) json_decode($message->payload, true);
 
     $payload["timestamp"] = time();
+    if (!isset($payload["valid_seconds"])) {
+        $payload["valid_seconds"] = 60;
+    }
     $data[] = $payload;
     $news = true;
 });
@@ -174,9 +177,6 @@ function precheck(Message $message): bool
         }
     }
 
-    if (!isset($payload["valid_seconds"])) {
-        $payload["valid_seconds"] = 60;
-    }
     if (!is_numeric($payload["valid_seconds"])) {
         error("valid_seconds must be a number");
         return false;
