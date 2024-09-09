@@ -24,6 +24,7 @@ The payload needs to be an object containing only the following keys:
 - `name` (string): the name of the metric
 - `value` (number): the value of the metric
 - `labels` (object, optional): an object containing the labels for the metric (key-value pairs of strings)
+- `valid_seconds` (number, optional, defaults to 60): the number of seconds the metric is valid. After this time, the metric will be removed from the export. (which will results in a gap in prometheus)
 
 According to prometheus conventions, the metric name and the label names need to be a lower or upper case letter or a underscore followed by all case leters, numbers or underscores.
 
