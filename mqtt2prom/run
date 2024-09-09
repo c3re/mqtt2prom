@@ -72,17 +72,17 @@ $mqtt->onMessage(function ($message) use (
     }
     $globalCounter++;
     $stats["messages"][] = time();
+
     if (!precheck($message)) {
         $stats["errors"][] = time();
         return;
     }
     $stats["metrics"][] = time();
     $payload = (array) json_decode($message->payload, true);
-
-    $payload["timestamp"] = time();
     if (!isset($payload["valid_seconds"])) {
         $payload["valid_seconds"] = 60;
     }
+    $payload["timestamp"] = time();
     $data[] = $payload;
     $news = true;
 });
@@ -177,6 +177,9 @@ function precheck(Message $message): bool
         }
     }
 
+    if (!isset($payload["valid_seconds"])) {
+        $payload["valid_seconds"] = 60;
+    }
     if (!is_numeric($payload["valid_seconds"])) {
         error("valid_seconds must be a number");
         return false;
@@ -326,10 +329,10 @@ function filter(): void
     $data = array_filter($data, function ($entry) {
         return $entry["timestamp"] > time() - $entry["valid_seconds"];
     });
-    // remove stats older than 24h
+    // remove stats older than 48h
     foreach ($stats as $key => $values) {
         $stats[$key] = array_filter($values, function ($v) {
-            return $v > time() - 24 * 60 * 60;
+            return $v > time() - 48 * 60 * 60;
         });
     }
 }
