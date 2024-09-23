@@ -375,7 +375,7 @@ function filter(): void
         });
     }
     // remove data points with the same name and labels, keep the newest
-    $filterEntries = [];
+   /* $filterEntries = [];
     foreach ($data as $key => $entry) {
         $sort = $entry["labels"] ?? [];
         ksort($sort);
@@ -402,6 +402,7 @@ function filter(): void
         return in_array($key, $keysToKeep);
     });
     $data = array_values($data);
+   */
 }
 
 function getEnvWithDefaultStr(string $key, string $default): string
