@@ -24,7 +24,15 @@ $ignoreRetained = getEnvWithDefaultInt("IGNORE_RETAINED", 1) ? 1 : 0;
 
 $mqtt = new Mosquitto\Client($mqttClientId);
 
-$data = [];
+$data = null;
+if (is_file("/www/metrics/raw")) {
+    $data = json_decode(strval(file_get_contents("/www/metrics/raw")), true);
+}
+
+if (!is_array($data)) {
+    $data = [];
+}
+
 $mqtt->setCredentials($mqttUser, $mqttPass);
 
 $usedConfig = [
@@ -140,7 +148,7 @@ while ($isRunning) {
         $mqtt->loop(100);
     }
 
-    if ($lastGC + 60*15 < time()) {
+    if ($lastGC + 60 * 15 < time()) {
         logit("doing Garbage collection...");
         $c = gc_collect_cycles();
         logit("Garbage collection done, $c cycles collected");
@@ -355,6 +363,14 @@ function output(): void
             JSON_PRETTY_PRINT + JSON_UNESCAPED_SLASHES + JSON_UNESCAPED_UNICODE
         )
     );
+    file_put_contents(
+        "/www/metrics/raw",
+        json_encode(
+            $data,
+            JSON_PRETTY_PRINT + JSON_UNESCAPED_SLASHES + JSON_UNESCAPED_UNICODE
+        )
+    );
+
     rename("/www/metrics/new.json", "/www/metrics/metrics.json");
     rename("/www/metrics/new.prom", "/www/metrics/index.prom");
     // return $prom;
