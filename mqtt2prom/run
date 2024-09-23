@@ -136,17 +136,15 @@ $lastGC = time();
 
 while ($isRunning) {
     $loopEnd = microtime(true) + 1;
-    $mqtt->loop(1000);
+    while (microtime(true) < $loopEnd) {
+        $mqtt->loop(100);
+    }
 
     if ($lastGC + 60 < time()) {
         logit("doing Garbage collection...");
         $c = gc_collect_cycles();
         logit("Garbage collection done, $c cycles collected");
         $lastGC = time();
-    }
-
-    if ($loopEnd > microtime(true)) {
-        usleep(intval($loopEnd - microtime(true)) * 1000000);
     }
 
     if (($news && time() - $timer > 1) || time() - $timer > 15) {
