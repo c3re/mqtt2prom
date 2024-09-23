@@ -140,7 +140,7 @@ while ($isRunning) {
         $mqtt->loop(100);
     }
 
-    if ($lastGC + 60 < time()) {
+    if ($lastGC + 60*15 < time()) {
         logit("doing Garbage collection...");
         $c = gc_collect_cycles();
         logit("Garbage collection done, $c cycles collected");
