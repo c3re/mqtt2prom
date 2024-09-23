@@ -392,7 +392,7 @@ function filter(): void
         $hash = md5($j);
         if (isset($used[$hash])) {
             unset($data[$k]);
-            echo "unset $k\n";
+            continue;
         }
         $used[$hash] = true;
     }
