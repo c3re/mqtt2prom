@@ -64,6 +64,7 @@ $mqtt->onMessage(function ($message) use (
     &$news,
     &$globalCounter,
     &$isRunning,
+    &$mqtt,
     $mqttTopic
 ) {
     if ($mqttTopic . "/restart" === $message->topic) {
@@ -71,7 +72,7 @@ $mqtt->onMessage(function ($message) use (
         return;
     }
     if ($mqttTopic . "/debug" === $message->topic) {
-        logit(
+        $debug = strval(
             json_encode(
                 $data,
                 JSON_UNESCAPED_SLASHES +
@@ -79,6 +80,9 @@ $mqtt->onMessage(function ($message) use (
                     JSON_PRETTY_PRINT
             )
         );
+        logit($debug);
+
+        $mqtt->publish($mqttTopic . "/debugmsg", $debug, 2);
         return;
     }
     $globalCounter++;
@@ -104,6 +108,7 @@ $mqtt->onMessage(function ($message) use (
 logit("Subscribing to $mqttTopic with QoS $qos ");
 $mqtt->subscribe($mqttTopic, $qos);
 $mqtt->subscribe($mqttTopic . "/restart", $qos);
+$mqtt->subscribe($mqttTopic . "/debug", $qos);
 logit("Subscribed");
 
 $timer = 0;
