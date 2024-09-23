@@ -64,7 +64,6 @@ $mqtt->onMessage(function ($message) use (
     &$news,
     &$globalCounter,
     &$isRunning,
-    $mqtt,
     $mqttTopic
 ) {
     if ($mqttTopic . "/restart" === $message->topic) {
@@ -72,17 +71,13 @@ $mqtt->onMessage(function ($message) use (
         return;
     }
     if ($mqttTopic . "/debug" === $message->topic) {
-        $mqtt->publish(
-            $mqttTopic . "/debugmsg",
-            strval(
-                json_encode(
-                    $data,
-                    JSON_UNESCAPED_SLASHES +
-                        JSON_UNESCAPED_UNICODE +
-                        JSON_PRETTY_PRINT
-                )
-            ),
-            2
+        logit(
+            json_encode(
+                $data,
+                JSON_UNESCAPED_SLASHES +
+                    JSON_UNESCAPED_UNICODE +
+                    JSON_PRETTY_PRINT
+            )
         );
         return;
     }
