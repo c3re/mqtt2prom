@@ -73,7 +73,7 @@ $mqtt->onMessage(function ($message) use (
     }
     if ($mqttTopic . "/debug" === $message->topic) {
         $mqtt->publish(
-            $mqttTopic . "/debug",
+            $mqttTopic . "/debugmsg",
             strval(
                 json_encode(
                     $data,
