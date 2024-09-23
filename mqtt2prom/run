@@ -66,6 +66,7 @@ $mqtt->onMessage(function ($message) use (
     &$isRunning,
     $mqttTopic
 ) {
+    echo "got message\n";
     if ($mqttTopic . "/restart" === $message->topic) {
         $isRunning = false;
         return;
@@ -109,9 +110,24 @@ while (time() < $realStart) {
 }
 echo "\n Starting to export data\n";
 
+$lastGC = time();
+
 while ($isRunning) {
+    $loopEnd = microtime(true) + 1;
     $mqtt->loop(1000);
-    if ($news || time() - $timer > 15) {
+
+    if ($lastGC + 60 < time()) {
+        gc_collect_cycles();
+        $lastGC = time();
+        echo "GC\n";
+    }
+
+    if ($loopEnd > microtime(true)) {
+        usleep(intval($loopEnd - microtime(true)) * 1000000);
+    }
+
+    if (($news && time() - $timer > 1) || time() - $timer > 15) {
+        echo "Outputting", $news ? "for changes" : "periodically", "\n";
         output();
         $news = false;
         $timer = time();
@@ -242,7 +258,6 @@ function output(): void
         43200 => "12 Hours",
         86400 => "Day",
     ];
-    echo "# gc_collect_cycles ".gc_collect_cycles()."\n";
     foreach ($stats as $key => $values) {
         $prom .= "# \n";
         foreach ($timeframe as $time => $name) {
@@ -333,7 +348,7 @@ function filter(): void
     // remove stats older than 14 days
     foreach ($stats as $key => $values) {
         $stats[$key] = array_filter($values, function ($v) {
-            return $v > time() -   60 * 60 * 24 * 14;
+            return $v > time() - 60 * 60 * 24 * 14;
         });
     }
 }
