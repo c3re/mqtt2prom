@@ -374,6 +374,34 @@ function filter(): void
             return $v > time() - 60 * 60 * 24 * 14;
         });
     }
+    // remove data points with the same name and labels, keep the newest
+    $filterEntries = [];
+    foreach ($data as $key => $entry) {
+        $sort = $entry["labels"] ?? [];
+        ksort($sort);
+        $sort[] = $entry["name"];
+        $hash = md5(strval(json_encode($sort)));
+        if (!isset($filterEntries[$hash])) {
+            $filterEntries[$hash] = [
+                "key" => $key,
+                "timestamp" => $entry["timestamp"],
+            ];
+            continue;
+        }
+        if ($filterEntries[$hash]["timestamp"] < $entry["timestamp"]) {
+            $filterEntries[$hash] = [
+                "key" => $key,
+                "timestamp" => $entry["timestamp"],
+            ];
+        }
+    }
+    $keysToKeep = array_map(function ($v) {
+        return $v["key"];
+    }, $filterEntries);
+    $data = array_filter((array) $data, function ($key) use ($keysToKeep) {
+        return in_array($key, $keysToKeep);
+    });
+    $data = array_values($data);
 }
 
 function getEnvWithDefaultStr(string $key, string $default): string
