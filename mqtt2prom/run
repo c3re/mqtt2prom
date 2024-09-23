@@ -114,7 +114,7 @@ logit("Subscribed");
 $timer = 0;
 
 logit(
-    "Started listening for incoming messages\n will wait 60 seconds before starting to export data"
+    "Started listening for incoming messages\n will wait 65 seconds before starting to export data"
 );
 $realStart = time() + 15;
 logit(
@@ -374,35 +374,30 @@ function filter(): void
             return $v > time() - 60 * 60 * 24 * 14;
         });
     }
-    // remove data points with the same name and labels, keep the newest
-   /* $filterEntries = [];
-    foreach ($data as $key => $entry) {
-        $sort = $entry["labels"] ?? [];
-        ksort($sort);
-        $sort[] = $entry["name"];
-        $hash = md5(strval(json_encode($sort)));
-        if (!isset($filterEntries[$hash])) {
-            $filterEntries[$hash] = [
-                "key" => $key,
-                "timestamp" => $entry["timestamp"],
-            ];
+
+    usort($data, function ($a, $b) {
+        return $b["timestamp"] - $a["timestamp"];
+    });
+
+    $used = [];
+    #logit("pre filter count: " . count($data));
+    foreach ($data as $k => $entry) {
+        $sortedLabels = $entry["labels"] ?? [];
+        ksort($sortedLabels);
+        $j = json_encode([$sortedLabels, $entry["name"]]);
+        if (false === $j) {
+            unset($data[$k]);
             continue;
         }
-        if ($filterEntries[$hash]["timestamp"] < $entry["timestamp"]) {
-            $filterEntries[$hash] = [
-                "key" => $key,
-                "timestamp" => $entry["timestamp"],
-            ];
+        $hash = md5($j);
+        if (isset($used[$hash])) {
+            unset($data[$k]);
+            echo "unset $k\n";
         }
+        $used[$hash] = true;
     }
-    $keysToKeep = array_map(function ($v) {
-        return $v["key"];
-    }, $filterEntries);
-    $data = array_filter((array) $data, function ($key) use ($keysToKeep) {
-        return in_array($key, $keysToKeep);
-    });
     $data = array_values($data);
-   */
+    #logit("post filter count: " . count($data));
 }
 
 function getEnvWithDefaultStr(string $key, string $default): string
