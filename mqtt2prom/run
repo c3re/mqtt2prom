@@ -86,17 +86,8 @@ $mqtt->onMessage(function ($message) use (
     $data[] = $payload;
     $news = true;
     $v = [];
-    foreach ($$payload["labels"] as $key => $value) {
-        $v[] = $key . "=" . $value;
-    }
-    logit(
-        "got message for " .
-            $payload["name"] .
-            ": " .
-            implode(", ", $payload["labels"]) .
-            " with value " .
-            implode(", ", $v)
-    );
+
+    logit("got message");
 });
 
 logit("Subscribing to $mqttTopic with QoS $qos ");
