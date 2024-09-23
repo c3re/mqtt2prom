@@ -5,7 +5,7 @@ use Mosquitto\Message;
 define("STARTED", time());
 $mqttHost = getenv("MQTT_HOST");
 if (!$mqttHost) {
-    echo "Please set MQTT_HOST environment variable\n";
+    logit( "Please set MQTT_HOST environment variable");
     exit(1);
 }
 
@@ -45,9 +45,9 @@ foreach ($usedConfig as $key => $value) {
     echo str_pad($key, $padLength) . ": $value\n";
 }
 
-echo "Connecting to $mqttHost:$mqttPort";
+logit("Connecting to $mqttHost:$mqttPort");
 $mqtt->connect($mqttHost, $mqttPort);
-echo "Connected\n";
+logit( "Connected");
 
 $data = [];
 $stats = [
@@ -66,7 +66,7 @@ $mqtt->onMessage(function ($message) use (
     &$isRunning,
     $mqttTopic
 ) {
-    echo "got message\n";
+    logit("got message");
     if ($mqttTopic . "/restart" === $message->topic) {
         $isRunning = false;
         return;
@@ -88,27 +88,27 @@ $mqtt->onMessage(function ($message) use (
     $news = true;
 });
 
-echo "Subscribing to $mqttTopic with QoS $qos ";
+logit( "Subscribing to $mqttTopic with QoS $qos ");
 $mqtt->subscribe($mqttTopic, $qos);
 $mqtt->subscribe($mqttTopic . "/restart", $qos);
-echo "Subscribed\n";
+logit( "Subscribed");
 
 $timer = 0;
 
-echo "Started listening for incoming messages\n will wait 60 seconds before starting to export data\n";
+logit("Started listening for incoming messages\n will wait 60 seconds before starting to export data");
 $realStart = time() + 15;
-echo "waiting till " .
+logit( "waiting till " .
     date("Y-m-d H:i:s", $realStart) .
     " that's in " .
     ($realStart - time()) .
-    " seconds\n";
+    " seconds");
 while (time() < $realStart) {
     $wait = time() + 5;
     $mqtt->loop(5000);
     sleep($wait - time());
-    echo "Still waiting...\n";
+    logit( "Still waiting...");
 }
-echo "\n Starting to export data\n";
+logit("Starting to export data");
 
 $lastGC = time();
 
@@ -119,7 +119,7 @@ while ($isRunning) {
     if ($lastGC + 60 < time()) {
         gc_collect_cycles();
         $lastGC = time();
-        echo "GC\n";
+        logit("doint GC");
     }
 
     if ($loopEnd > microtime(true)) {
@@ -127,7 +127,7 @@ while ($isRunning) {
     }
 
     if (($news && time() - $timer > 1) || time() - $timer > 15) {
-        echo "Outputting", $news ? "for changes" : "periodically", "\n";
+        logit("Outputting ", $news ? "for changes" : "periodically");
         output();
         $news = false;
         $timer = time();
@@ -385,5 +385,10 @@ function endit(): void
     global $isRunning;
     $isRunning = false;
     error("Exiting");
+}
+
+
+function logit():void{
+    echo date("[Y-m-d H:i:s]")." ".implode(" ",func_get_args())."\n";
 }
 
