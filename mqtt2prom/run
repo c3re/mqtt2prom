@@ -5,7 +5,7 @@ use Mosquitto\Message;
 define("STARTED", time());
 $mqttHost = getenv("MQTT_HOST");
 if (!$mqttHost) {
-    logit( "Please set MQTT_HOST environment variable");
+    logit("Please set MQTT_HOST environment variable");
     exit(1);
 }
 
@@ -47,7 +47,7 @@ foreach ($usedConfig as $key => $value) {
 
 logit("Connecting to $mqttHost:$mqttPort");
 $mqtt->connect($mqttHost, $mqttPort);
-logit( "Connected");
+logit("Connected");
 
 $data = [];
 $stats = [
@@ -88,25 +88,29 @@ $mqtt->onMessage(function ($message) use (
     $news = true;
 });
 
-logit( "Subscribing to $mqttTopic with QoS $qos ");
+logit("Subscribing to $mqttTopic with QoS $qos ");
 $mqtt->subscribe($mqttTopic, $qos);
 $mqtt->subscribe($mqttTopic . "/restart", $qos);
-logit( "Subscribed");
+logit("Subscribed");
 
 $timer = 0;
 
-logit("Started listening for incoming messages\n will wait 60 seconds before starting to export data");
+logit(
+    "Started listening for incoming messages\n will wait 60 seconds before starting to export data"
+);
 $realStart = time() + 15;
-logit( "waiting till " .
-    date("Y-m-d H:i:s", $realStart) .
-    " that's in " .
-    ($realStart - time()) .
-    " seconds");
+logit(
+    "waiting till " .
+        date("Y-m-d H:i:s", $realStart) .
+        " that's in " .
+        ($realStart - time()) .
+        " seconds"
+);
 while (time() < $realStart) {
     $wait = time() + 5;
     $mqtt->loop(5000);
     sleep($wait - time());
-    logit( "Still waiting...");
+    logit("Still waiting...");
 }
 logit("Starting to export data");
 
@@ -117,9 +121,10 @@ while ($isRunning) {
     $mqtt->loop(1000);
 
     if ($lastGC + 60 < time()) {
-        gc_collect_cycles();
+        logit("doing Garbage collection...");
+        $c = gc_collect_cycles();
+        logit("Garbage collection done, $c cycles collected");
         $lastGC = time();
-        logit("doint GC");
     }
 
     if ($loopEnd > microtime(true)) {
@@ -387,8 +392,8 @@ function endit(): void
     error("Exiting");
 }
 
-
-function logit():void{
-    echo date("[Y-m-d H:i:s]")." ".implode(" ",func_get_args())."\n";
+function logit(): void
+{
+    echo date("[Y-m-d H:i:s]") . " " . implode(" ", func_get_args()) . "\n";
 }
 
