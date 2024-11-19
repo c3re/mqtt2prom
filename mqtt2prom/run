@@ -314,6 +314,17 @@ function output(): void
         $filteredData[$hash] = $entry;
     }
 
+    usort($filteredData, function ($a, $b) {
+        $r = strcmp($a["name"], $b["name"]);
+        if ($r !== 0) {
+            return $r;
+        }
+        return strcmp(
+            strval(json_encode($a["labels"])),
+            strval(json_encode($b["labels"]))
+        );
+    });
+
     foreach ($filteredData as $entry) {
         $labels = [];
         if (isset($entry["labels"])) {
@@ -423,6 +434,7 @@ function getEnvWithDefaultInt(string $key, int $default): int
 {
     return intval(getEnvWithDefault($key, $default));
 }
+
 function getEnvWithDefault(
     string $key,
     bool|string|int $default
