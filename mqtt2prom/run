@@ -288,7 +288,7 @@ function output(): void
         86400 => "Day",
     ];
 
-    $maxNumberStringLength=number_format($globalCounter);
+    $maxNumberStringLength=strlen(number_format($globalCounter));
 
     foreach ($stats as $key => $values) {
         $prom .= "# \n";
