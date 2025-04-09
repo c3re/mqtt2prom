@@ -287,6 +287,9 @@ function output(): void
         43200 => "12 Hours",
         86400 => "Day",
     ];
+
+    $maxNumberStringLength=number_format($globalCounter);
+
     foreach ($stats as $key => $values) {
         $prom .= "# \n";
         foreach ($timeframe as $time => $name) {
@@ -297,11 +300,16 @@ function output(): void
             );
             $fkey = str_pad($key, 8);
             $fname = str_pad($name, 10);
-            $prom .= "# $fkey in the last $fname: $count\n";
+            $countStirng=
+                str_pad(
+                    number_format($count),
+                    $maxNumberStringLength
+                );
+            $prom .= "# $fkey in the last $fname: $countStirng\n";
         }
     }
     $prom .= "# \n";
-    $prom .= "# global counter                 : $globalCounter\n\n";
+    $prom .= "# global counter                 : ".number_format($globalCounter)."\n\n";
 
     $filteredData = [];
 
