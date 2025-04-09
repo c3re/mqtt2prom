@@ -300,15 +300,14 @@ function output(): void
             );
             $fkey = str_pad($key, 8);
             $fname = str_pad($name, 10);
-            $countStirng=
+            $countString=
                 str_pad(
                     number_format($count),
                     $maxNumberStringLength,
                     " ",
-                    STR_PAD_LEFT,
-                    $maxNumberStringLength
+                    STR_PAD_LEFT
                 );
-            $prom .= "# $fkey in the last $fname: $countStirng\n";
+            $prom .= "# $fkey in the last $fname: $countString\n";
         }
     }
     $prom .= "# \n";
