@@ -305,7 +305,8 @@ function output(): void
                     number_format($count),
                     $maxNumberStringLength,
                     " ",
-                    STR_PAD_LEFT
+                    STR_PAD_LEFT,
+                    $maxNumberStringLength
                 );
             $prom .= "# $fkey in the last $fname: $countStirng\n";
         }
