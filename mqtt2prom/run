@@ -375,6 +375,7 @@ function output(): void
         "memory_usage_peak_allocated{unit=\"bytes\"} " .
         memory_get_peak_usage(true) .
         "\n";
+    $prom .="mqtt2prom_last_write{unit=\"timestamp\"} " . time() . "\n";
 
     file_put_contents("/www/metrics/new.prom", $prom);
     file_put_contents(
